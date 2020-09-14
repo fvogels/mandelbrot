@@ -8,6 +8,16 @@ import (
 	"os"
 )
 
+type settings struct {
+	image_width    int
+	image_height   int
+	center_x       float64
+	center_y       float64
+	width          float64
+	abs_bound      float64
+	max_iterations uint32
+}
+
 func mandelbrot(x, y, abs_bound float64, max_iterations uint32) uint32 {
 	re := x
 	im := y
@@ -26,13 +36,16 @@ func mandelbrot(x, y, abs_bound float64, max_iterations uint32) uint32 {
 	return iterations
 }
 
-func render_image(pixel_width, pixel_height int) image.Image {
-	abs_bound := 1000.0
-	max_iterations := uint32(200)
+func render_image(settings *settings) image.Image {
+	abs_bound := settings.abs_bound
+	max_iterations := settings.max_iterations
 
-	var centerx float64 = -1.25
-	var centery float64 = 0
-	var width float64 = 0.25
+	pixel_width := settings.image_width
+	pixel_height := settings.image_height
+
+	var centerx float64 = settings.center_x
+	var centery float64 = settings.center_y
+	var width float64 = settings.width
 	var height float64 = (width * float64(pixel_height) / float64(pixel_width))
 	var left float64 = centerx - width/2
 	var top float64 = centery + height/2
@@ -63,10 +76,16 @@ func render_image(pixel_width, pixel_height int) image.Image {
 }
 
 func main() {
-	pixel_width := 500
-	pixel_height := 500
+	s := settings{
+		image_width:    500,
+		image_height:   500,
+		center_x:       -1.25,
+		center_y:       0,
+		width:          0.25,
+		abs_bound:      1000.0,
+		max_iterations: 200}
 
-	image := render_image(pixel_width, pixel_height)
+	image := render_image(&s)
 
 	file, _ := os.Create("result.png")
 	defer file.Close()
