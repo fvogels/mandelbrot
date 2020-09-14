@@ -26,9 +26,7 @@ func mandelbrot(x, y, abs_bound float64, max_iterations uint32) uint32 {
 	return iterations
 }
 
-func main() {
-	pixel_width := 500
-	pixel_height := 500
+func render_image(pixel_width, pixel_height int) image.Image {
 	abs_bound := 1000.0
 	max_iterations := uint32(200)
 
@@ -48,8 +46,6 @@ func main() {
 
 	size := image.Rect(0, 0, pixel_width, pixel_height)
 	image := image.NewRGBA(size)
-	file, _ := os.Create("result.png")
-	defer file.Close()
 
 	for py := 0; py < pixel_height; py++ {
 		for px := 0; px < pixel_width; px++ {
@@ -63,5 +59,16 @@ func main() {
 		}
 	}
 
+	return image
+}
+
+func main() {
+	pixel_width := 500
+	pixel_height := 500
+
+	image := render_image(pixel_width, pixel_height)
+
+	file, _ := os.Create("result.png")
+	defer file.Close()
 	png.Encode(file, image)
 }
