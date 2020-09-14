@@ -39,13 +39,12 @@ func mandelbrot(x, y, abs_bound float64, max_iterations uint32) uint32 {
 func render_image(settings *settings) image.Image {
 	abs_bound := settings.abs_bound
 	max_iterations := settings.max_iterations
-
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
+	centerx := settings.center_x
+	centery := settings.center_y
+	width := settings.width
 
-	var centerx float64 = settings.center_x
-	var centery float64 = settings.center_y
-	var width float64 = settings.width
 	var height float64 = (width * float64(pixel_height) / float64(pixel_width))
 	var left float64 = centerx - width/2
 	var top float64 = centery + height/2
