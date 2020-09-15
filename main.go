@@ -5,7 +5,9 @@ import (
 	"image/color"
 	"image/png"
 	_ "image/png"
+	"log"
 	"os"
+	"time"
 )
 
 type settings struct {
@@ -75,13 +77,15 @@ func render_image(settings *settings) image.Image {
 }
 
 func main() {
+	before := time.Now()
+
 	s := settings{
 		image_width:    500,
 		image_height:   500,
 		center_x:       -1.25,
 		center_y:       0,
 		width:          0.25,
-		abs_bound:      1000.0,
+		abs_bound:      10000.0,
 		max_iterations: 200}
 
 	image := render_image(&s)
@@ -89,4 +93,7 @@ func main() {
 	file, _ := os.Create("result.png")
 	defer file.Close()
 	png.Encode(file, image)
+
+	elapsed := time.Since(before)
+	log.Printf("Done in %s", elapsed)
 }
