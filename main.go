@@ -87,6 +87,10 @@ func (r ConcurrentRowRenderer) render_row(x_start, x_step, y float64, py int, se
 	}
 }
 
+type ImageRenderer interface {
+	render_image(settings *settings) image.Image
+}
+
 func render_image_concurrent_rows(settings *settings) image.Image {
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
