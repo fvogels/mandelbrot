@@ -7,6 +7,7 @@ import (
 	_ "image/png"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -61,7 +62,56 @@ func render_image(settings *settings) image.Image {
 	size := image.Rect(0, 0, pixel_width, pixel_height)
 	image := image.NewRGBA(size)
 
+	var waitgroup sync.WaitGroup
+
 	for py := 0; py < pixel_height; py++ {
+		waitgroup.Add(1)
+
+		go func(py int) {
+			defer waitgroup.Done()
+
+			for px := 0; px < pixel_width; px++ {
+				cx := float64(px)*hscale + hintercept
+				cy := float64(py)*vscale + vintercept
+				iterations := mandelbrot(cx, cy, abs_bound, max_iterations)
+				intensity := float64(iterations) / float64(max_iterations)
+				color_component := uint8(intensity * 255.0)
+				color := color.RGBA{color_component, color_component, color_component, 255}
+				image.Set(px, py, color)
+			}
+		}(py)
+	}
+
+	waitgroup.Wait()
+
+	return image
+}
+
+func render_image_by_row(settings *settings) image.Image {
+	abs_bound := settings.abs_bound
+	max_iterations := settings.max_iterations
+	pixel_width := settings.image_width
+	pixel_height := settings.image_height
+	centerx := settings.center_x
+	centery := settings.center_y
+	width := settings.width
+
+	var height float64 = (width * float64(pixel_height) / float64(pixel_width))
+	var left float64 = centerx - width/2
+	var top float64 = centery + height/2
+	var right float64 = left + width
+	var bottom float64 = top - height
+
+	hscale := (right - left) / float64(pixel_width)
+	vscale := (top - bottom) / float64(pixel_height)
+	hintercept := left
+	vintercept := bottom
+
+	size := image.Rect(0, 0, pixel_width, pixel_height)
+	image := image.NewRGBA(size)
+
+	for py := 0; py < pixel_height; py++ {
+
 		for px := 0; px < pixel_width; px++ {
 			cx := float64(px)*hscale + hintercept
 			cy := float64(py)*vscale + vintercept
@@ -80,15 +130,15 @@ func main() {
 	before := time.Now()
 
 	s := settings{
-		image_width:    500,
-		image_height:   500,
+		image_width:    5000,
+		image_height:   5000,
 		center_x:       -1.25,
 		center_y:       0,
 		width:          0.25,
 		abs_bound:      10000.0,
 		max_iterations: 200}
 
-	image := render_image(&s)
+	image := render_image_by_row(&s)
 
 	file, _ := os.Create("result.png")
 	defer file.Close()
