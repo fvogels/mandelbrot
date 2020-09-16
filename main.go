@@ -89,12 +89,15 @@ func (r ConcurrentRowRenderer) render_row(x_start, x_step, y float64, py int, se
 }
 
 type ImageRenderer interface {
-	render_image(settings *settings, row_renderer RowRenderer) image.Image
+	render_image(settings *settings) image.Image
 }
 
-type SerialImageRenderer struct{}
+type SerialImageRenderer struct {
+	row_renderer RowRenderer
+}
 
-func (_ SerialImageRenderer) render_image(settings *settings, row_renderer RowRenderer) image.Image {
+func (r SerialImageRenderer) render_image(settings *settings) image.Image {
+	row_renderer := r.row_renderer
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
 	centerx := settings.center_x
@@ -124,10 +127,12 @@ func (_ SerialImageRenderer) render_image(settings *settings, row_renderer RowRe
 }
 
 type ConcurrentImageRenderer struct {
-	waitgroup *sync.WaitGroup
+	waitgroup    *sync.WaitGroup
+	row_renderer RowRenderer
 }
 
-func (r ConcurrentImageRenderer) render_image(settings *settings, row_renderer RowRenderer) image.Image {
+func (r ConcurrentImageRenderer) render_image(settings *settings) image.Image {
+	row_renderer := r.row_renderer
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
 	centerx := settings.center_x
@@ -175,12 +180,12 @@ type SerialAnimationRenderer struct{}
 func (_ SerialAnimationRenderer) render(settings_receiver <-chan *settings) {
 	var waitgroup sync.WaitGroup
 	row_renderer := SerialRowRenderer{}
-	frame_renderer := ConcurrentImageRenderer{waitgroup: &waitgroup}
+	frame_renderer := ConcurrentImageRenderer{waitgroup: &waitgroup, row_renderer: row_renderer}
 	settings := <-settings_receiver
 
 	for settings != nil {
 		log.Printf("Rendering %s", settings.filename)
-		frame := frame_renderer.render_image(settings, row_renderer)
+		frame := frame_renderer.render_image(settings)
 		file, _ := os.Create(settings.filename)
 		png.Encode(file, frame)
 		file.Close()
