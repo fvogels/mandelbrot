@@ -243,8 +243,8 @@ func main() {
 		width = width * 0.95
 
 		s := settings{
-			image_width:    500,
-			image_height:   500,
+			image_width:    1920,
+			image_height:   1080,
 			center_x:       -0.746402,
 			center_y:       0.1101995,
 			width:          width,
