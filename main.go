@@ -67,7 +67,27 @@ func (_ SerialRowRenderer) render_row(x_start, x_step, y float64, py int, settin
 	}
 }
 
-func render_image_concurrent_rows(row_renderer RowRenderer, settings *settings) image.Image {
+type ConcurrentRowRenderer struct {
+	waitgroup *sync.WaitGroup
+}
+
+func (r ConcurrentRowRenderer) render_row(x_start, x_step, y float64, py int, settings *settings, image *image.RGBA) {
+	pixel_width := settings.image_width
+
+	for i := 0; i < pixel_width; i++ {
+		r.waitgroup.Add(1)
+
+		go func(i int) {
+			defer r.waitgroup.Done()
+
+			x := x_start + x_step*float64(i)
+			color := render_pixel(x, y, settings)
+			image.Set(i, py, color)
+		}(i)
+	}
+}
+
+func render_image_concurrent_rows(settings *settings) image.Image {
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
 	centerx := settings.center_x
@@ -89,6 +109,8 @@ func render_image_concurrent_rows(row_renderer RowRenderer, settings *settings) 
 	rendering := image.NewRGBA(size)
 
 	var waitgroup sync.WaitGroup
+	row_renderer := SerialRowRenderer{}
+	// row_renderer := ConcurrentRowRenderer{waitgroup: &waitgroup}
 
 	for py := 0; py < pixel_height; py++ {
 		waitgroup.Add(1)
@@ -106,7 +128,7 @@ func render_image_concurrent_rows(row_renderer RowRenderer, settings *settings) 
 	return rendering
 }
 
-func render_image(row_renderer RowRenderer, settings *settings) image.Image {
+func render_image(settings *settings) image.Image {
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
 	centerx := settings.center_x
@@ -126,6 +148,7 @@ func render_image(row_renderer RowRenderer, settings *settings) image.Image {
 
 	size := image.Rect(0, 0, pixel_width, pixel_height)
 	rendering := image.NewRGBA(size)
+	row_renderer := SerialRowRenderer{}
 
 	for py := 0; py < pixel_height; py++ {
 		y := float64(py)*vscale + vintercept
@@ -148,7 +171,7 @@ func main() {
 		max_iterations: 200}
 
 	// image := render_image(&s)
-	image := render_image_concurrent_rows(SerialRowRenderer{}, &s)
+	image := render_image_concurrent_rows(&s)
 
 	file, _ := os.Create("result.png")
 	defer file.Close()
