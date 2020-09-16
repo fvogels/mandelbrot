@@ -21,10 +21,12 @@ type settings struct {
 	max_iterations uint32
 }
 
-func compute_iterations(x, y, abs_bound float64, max_iterations uint32) uint32 {
+func compute_iterations(x, y float64, settings *settings) uint32 {
 	re := x
 	im := y
 	abs := re*re + im*im
+	abs_bound := settings.abs_bound
+	max_iterations := settings.max_iterations
 	var iterations uint32 = 0
 
 	for abs < abs_bound && iterations < max_iterations {
@@ -40,7 +42,6 @@ func compute_iterations(x, y, abs_bound float64, max_iterations uint32) uint32 {
 }
 
 func render_image_concurrent_rows(settings *settings) image.Image {
-	abs_bound := settings.abs_bound
 	max_iterations := settings.max_iterations
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
@@ -73,7 +74,7 @@ func render_image_concurrent_rows(settings *settings) image.Image {
 			for px := 0; px < pixel_width; px++ {
 				cx := float64(px)*hscale + hintercept
 				cy := float64(py)*vscale + vintercept
-				iterations := compute_iterations(cx, cy, abs_bound, max_iterations)
+				iterations := compute_iterations(cx, cy, settings)
 				intensity := float64(iterations) / float64(max_iterations)
 				color_component := uint8(intensity * 255.0)
 				color := color.RGBA{color_component, color_component, color_component, 255}
@@ -88,7 +89,6 @@ func render_image_concurrent_rows(settings *settings) image.Image {
 }
 
 func render_image(settings *settings) image.Image {
-	abs_bound := settings.abs_bound
 	max_iterations := settings.max_iterations
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
@@ -115,7 +115,7 @@ func render_image(settings *settings) image.Image {
 		for px := 0; px < pixel_width; px++ {
 			cx := float64(px)*hscale + hintercept
 			cy := float64(py)*vscale + vintercept
-			iterations := compute_iterations(cx, cy, abs_bound, max_iterations)
+			iterations := compute_iterations(cx, cy, settings)
 			intensity := float64(iterations) / float64(max_iterations)
 			color_component := uint8(intensity * 255.0)
 			color := color.RGBA{color_component, color_component, color_component, 255}
