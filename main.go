@@ -88,12 +88,12 @@ func (r ConcurrentRowRenderer) render_row(x_start, x_step, y float64, py int, se
 }
 
 type ImageRenderer interface {
-	render_image(settings *settings) image.Image
+	render_image(settings *settings, row_renderer RowRenderer) image.Image
 }
 
 type SerialImageRenderer struct{}
 
-func (_ SerialImageRenderer) render_image(settings *settings) image.Image {
+func (_ SerialImageRenderer) render_image(settings *settings, row_renderer RowRenderer) image.Image {
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
 	centerx := settings.center_x
@@ -113,7 +113,6 @@ func (_ SerialImageRenderer) render_image(settings *settings) image.Image {
 
 	size := image.Rect(0, 0, pixel_width, pixel_height)
 	rendering := image.NewRGBA(size)
-	row_renderer := SerialRowRenderer{}
 
 	for py := 0; py < pixel_height; py++ {
 		y := float64(py)*vscale + vintercept
@@ -127,7 +126,7 @@ type ConcurrentImageRenderer struct {
 	waitgroup *sync.WaitGroup
 }
 
-func (r ConcurrentImageRenderer) render_image(settings *settings) image.Image {
+func (r ConcurrentImageRenderer) render_image(settings *settings, row_renderer RowRenderer) image.Image {
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
 	centerx := settings.center_x
@@ -149,8 +148,6 @@ func (r ConcurrentImageRenderer) render_image(settings *settings) image.Image {
 	rendering := image.NewRGBA(size)
 
 	waitgroup := r.waitgroup
-	row_renderer := SerialRowRenderer{}
-	// row_renderer := ConcurrentRowRenderer{waitgroup: &waitgroup}
 
 	for py := 0; py < pixel_height; py++ {
 		waitgroup.Add(1)
@@ -174,15 +171,18 @@ func main() {
 	s := settings{
 		image_width:    3440,
 		image_height:   1440,
-		center_x:       -1.25,
-		center_y:       0,
-		width:          0.25,
+		center_x:       -0.7463,
+		center_y:       0.1102,
+		width:          0.005,
 		abs_bound:      10000.0,
 		max_iterations: 200}
 
 	var waitgroup sync.WaitGroup
-	renderer := ConcurrentImageRenderer{waitgroup: &waitgroup}
-	image := renderer.render_image(&s)
+	row_renderer := SerialRowRenderer{}
+	// row_renderer := ConcurrentRowRenderer{waitgroup: &waitgroup}
+	image_renderer := ConcurrentImageRenderer{waitgroup: &waitgroup}
+	// image_renderer := SerialImageRenderer{}
+	image := image_renderer.render_image(&s, row_renderer)
 
 	file, _ := os.Create("result.png")
 	defer file.Close()
