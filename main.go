@@ -128,7 +128,6 @@ func (r SerialImageRenderer) render_image(settings *settings) image.Image {
 }
 
 type ConcurrentImageRenderer struct {
-	waitgroup    *sync.WaitGroup
 	row_renderer RowRenderer
 }
 
@@ -153,8 +152,7 @@ func (r ConcurrentImageRenderer) render_image(settings *settings) image.Image {
 
 	size := image.Rect(0, 0, pixel_width, pixel_height)
 	rendering := image.NewRGBA(size)
-
-	waitgroup := r.waitgroup
+	var waitgroup sync.WaitGroup
 
 	for py := 0; py < pixel_height; py++ {
 		waitgroup.Add(1)
@@ -214,9 +212,9 @@ func (r ConcurrentAnimationRenderer) render(settings_receiver <-chan *settings) 
 			file, _ := os.Create(settings.filename)
 			defer file.Close()
 
-			log.Printf("Rendering %s", settings.filename)
 			frame := frame_renderer.render_image(settings)
 			png.Encode(file, frame)
+			log.Printf("Rendered %s", settings.filename)
 		}(current_settings)
 
 		current_settings = <-settings_receiver
@@ -229,8 +227,7 @@ func main() {
 	var waitgroup sync.WaitGroup
 
 	row_renderer := SerialRowRenderer{}
-	frame_renderer := ConcurrentImageRenderer{
-		waitgroup:    &waitgroup,
+	frame_renderer := SerialImageRenderer{
 		row_renderer: row_renderer}
 	renderer := ConcurrentAnimationRenderer{
 		frame_renderer: frame_renderer,
@@ -239,17 +236,17 @@ func main() {
 	go renderer.render(settings_channel)
 
 	width := 1.0
-	nframes := 30
+	nframes := 300
 
 	for i := 0; i < nframes; i += 1 {
 		filename := fmt.Sprintf("frame%05d.png", i)
 		width = width * 0.95
 
 		s := settings{
-			image_width:    3440,
-			image_height:   1440,
-			center_x:       -0.7463,
-			center_y:       0.1102,
+			image_width:    500,
+			image_height:   500,
+			center_x:       -0.746402,
+			center_y:       0.1101995,
 			width:          width,
 			abs_bound:      10000.0,
 			max_iterations: 200,
