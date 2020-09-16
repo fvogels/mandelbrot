@@ -195,6 +195,34 @@ func (r SerialAnimationRenderer) render(settings_receiver <-chan *settings) {
 	}
 }
 
+type ConcurrentAnimationRenderer struct {
+	waitgroup      *sync.WaitGroup
+	frame_renderer ImageRenderer
+}
+
+func (r ConcurrentAnimationRenderer) render(settings_receiver <-chan *settings) {
+	waitgroup := r.waitgroup
+	frame_renderer := r.frame_renderer
+	current_settings := <-settings_receiver
+
+	for current_settings != nil {
+		waitgroup.Add(1)
+
+		go func(settings *settings) {
+			defer waitgroup.Done()
+
+			file, _ := os.Create(settings.filename)
+			defer file.Close()
+
+			log.Printf("Rendering %s", settings.filename)
+			frame := frame_renderer.render_image(settings)
+			png.Encode(file, frame)
+		}(current_settings)
+
+		current_settings = <-settings_receiver
+	}
+}
+
 func main() {
 	before := time.Now()
 
@@ -204,21 +232,22 @@ func main() {
 	frame_renderer := ConcurrentImageRenderer{
 		waitgroup:    &waitgroup,
 		row_renderer: row_renderer}
-	renderer := SerialAnimationRenderer{frame_renderer: frame_renderer}
+	renderer := ConcurrentAnimationRenderer{
+		frame_renderer: frame_renderer,
+		waitgroup:      &waitgroup}
 	settings_channel := make(chan *settings)
 	go renderer.render(settings_channel)
 
-	start_width := 1.0
-	end_width := 0.005
+	width := 1.0
 	nframes := 30
 
 	for i := 0; i < nframes; i += 1 {
 		filename := fmt.Sprintf("frame%05d.png", i)
-		width := start_width + float64(i)*(end_width-start_width)/float64(nframes)
+		width = width * 0.95
 
 		s := settings{
-			image_width:    500,
-			image_height:   500,
+			image_width:    3440,
+			image_height:   1440,
 			center_x:       -0.7463,
 			center_y:       0.1102,
 			width:          width,
@@ -230,6 +259,8 @@ func main() {
 	}
 
 	settings_channel <- nil
+
+	waitgroup.Wait()
 
 	elapsed := time.Since(before)
 	log.Printf("Done in %s", elapsed)
