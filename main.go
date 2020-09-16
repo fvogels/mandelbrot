@@ -41,8 +41,17 @@ func compute_iterations(x, y float64, settings *settings) uint32 {
 	return iterations
 }
 
-func render_image_concurrent_rows(settings *settings) image.Image {
+func render_pixel(x, y float64, settings *settings) color.RGBA {
 	max_iterations := settings.max_iterations
+	iterations := compute_iterations(x, y, settings)
+	intensity := float64(iterations) / float64(max_iterations)
+	color_component := uint8(intensity * 255.0)
+	color := color.RGBA{color_component, color_component, color_component, 255}
+
+	return color
+}
+
+func render_image_concurrent_rows(settings *settings) image.Image {
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
 	centerx := settings.center_x
@@ -74,10 +83,7 @@ func render_image_concurrent_rows(settings *settings) image.Image {
 			for px := 0; px < pixel_width; px++ {
 				cx := float64(px)*hscale + hintercept
 				cy := float64(py)*vscale + vintercept
-				iterations := compute_iterations(cx, cy, settings)
-				intensity := float64(iterations) / float64(max_iterations)
-				color_component := uint8(intensity * 255.0)
-				color := color.RGBA{color_component, color_component, color_component, 255}
+				color := render_pixel(cx, cy, settings)
 				image.Set(px, py, color)
 			}
 		}(py)
@@ -89,7 +95,6 @@ func render_image_concurrent_rows(settings *settings) image.Image {
 }
 
 func render_image(settings *settings) image.Image {
-	max_iterations := settings.max_iterations
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
 	centerx := settings.center_x
@@ -115,10 +120,7 @@ func render_image(settings *settings) image.Image {
 		for px := 0; px < pixel_width; px++ {
 			cx := float64(px)*hscale + hintercept
 			cy := float64(py)*vscale + vintercept
-			iterations := compute_iterations(cx, cy, settings)
-			intensity := float64(iterations) / float64(max_iterations)
-			color_component := uint8(intensity * 255.0)
-			color := color.RGBA{color_component, color_component, color_component, 255}
+			color := render_pixel(cx, cy, settings)
 			image.Set(px, py, color)
 		}
 	}
