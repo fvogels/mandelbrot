@@ -39,7 +39,7 @@ func mandelbrot(x, y, abs_bound float64, max_iterations uint32) uint32 {
 	return iterations
 }
 
-func render_image(settings *settings) image.Image {
+func render_image_concurrent_rows(settings *settings) image.Image {
 	abs_bound := settings.abs_bound
 	max_iterations := settings.max_iterations
 	pixel_width := settings.image_width
@@ -87,7 +87,7 @@ func render_image(settings *settings) image.Image {
 	return image
 }
 
-func render_image_by_row(settings *settings) image.Image {
+func render_image(settings *settings) image.Image {
 	abs_bound := settings.abs_bound
 	max_iterations := settings.max_iterations
 	pixel_width := settings.image_width
@@ -130,15 +130,15 @@ func main() {
 	before := time.Now()
 
 	s := settings{
-		image_width:    5000,
-		image_height:   5000,
+		image_width:    3440,
+		image_height:   1440,
 		center_x:       -1.25,
 		center_y:       0,
 		width:          0.25,
 		abs_bound:      10000.0,
 		max_iterations: 200}
 
-	image := render_image_by_row(&s)
+	image := render_image_concurrent_rows(&s)
 
 	file, _ := os.Create("result.png")
 	defer file.Close()
