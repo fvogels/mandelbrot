@@ -51,7 +51,13 @@ func render_pixel(x, y float64, settings *settings) color.RGBA {
 	return color
 }
 
-func render_row(x_start, x_step, y float64, py int, settings *settings, image *image.RGBA) {
+type RowRenderer interface {
+	render_row(x_start, x_step, y float64, py int, settings *settings, image *image.RGBA)
+}
+
+type SerialRowRenderer struct{}
+
+func (_ SerialRowRenderer) render_row(x_start, x_step, y float64, py int, settings *settings, image *image.RGBA) {
 	pixel_width := settings.image_width
 
 	for i := 0; i < pixel_width; i++ {
@@ -61,7 +67,7 @@ func render_row(x_start, x_step, y float64, py int, settings *settings, image *i
 	}
 }
 
-func render_image_concurrent_rows(settings *settings) image.Image {
+func render_image_concurrent_rows(row_renderer RowRenderer, settings *settings) image.Image {
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
 	centerx := settings.center_x
@@ -91,7 +97,7 @@ func render_image_concurrent_rows(settings *settings) image.Image {
 			defer waitgroup.Done()
 
 			y := float64(py)*vscale + vintercept
-			render_row(hintercept, hscale, y, py, settings, rendering)
+			row_renderer.render_row(hintercept, hscale, y, py, settings, rendering)
 		}(py)
 	}
 
@@ -100,7 +106,7 @@ func render_image_concurrent_rows(settings *settings) image.Image {
 	return rendering
 }
 
-func render_image(settings *settings) image.Image {
+func render_image(row_renderer RowRenderer, settings *settings) image.Image {
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
 	centerx := settings.center_x
@@ -123,7 +129,7 @@ func render_image(settings *settings) image.Image {
 
 	for py := 0; py < pixel_height; py++ {
 		y := float64(py)*vscale + vintercept
-		render_row(hintercept, hscale, y, py, settings, rendering)
+		row_renderer.render_row(hintercept, hscale, y, py, settings, rendering)
 	}
 
 	return rendering
@@ -142,7 +148,7 @@ func main() {
 		max_iterations: 200}
 
 	// image := render_image(&s)
-	image := render_image_concurrent_rows(&s)
+	image := render_image_concurrent_rows(SerialRowRenderer{}, &s)
 
 	file, _ := os.Create("result.png")
 	defer file.Close()
