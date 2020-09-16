@@ -91,6 +91,38 @@ type ImageRenderer interface {
 	render_image(settings *settings) image.Image
 }
 
+type SerialImageRenderer struct{}
+
+func (_ SerialImageRenderer) render_image(settings *settings) image.Image {
+	pixel_width := settings.image_width
+	pixel_height := settings.image_height
+	centerx := settings.center_x
+	centery := settings.center_y
+	width := settings.width
+
+	var height float64 = (width * float64(pixel_height) / float64(pixel_width))
+	var left float64 = centerx - width/2
+	var top float64 = centery + height/2
+	var right float64 = left + width
+	var bottom float64 = top - height
+
+	hscale := (right - left) / float64(pixel_width)
+	vscale := (top - bottom) / float64(pixel_height)
+	hintercept := left
+	vintercept := bottom
+
+	size := image.Rect(0, 0, pixel_width, pixel_height)
+	rendering := image.NewRGBA(size)
+	row_renderer := SerialRowRenderer{}
+
+	for py := 0; py < pixel_height; py++ {
+		y := float64(py)*vscale + vintercept
+		row_renderer.render_row(hintercept, hscale, y, py, settings, rendering)
+	}
+
+	return rendering
+}
+
 func render_image_concurrent_rows(settings *settings) image.Image {
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
@@ -132,36 +164,6 @@ func render_image_concurrent_rows(settings *settings) image.Image {
 	return rendering
 }
 
-func render_image(settings *settings) image.Image {
-	pixel_width := settings.image_width
-	pixel_height := settings.image_height
-	centerx := settings.center_x
-	centery := settings.center_y
-	width := settings.width
-
-	var height float64 = (width * float64(pixel_height) / float64(pixel_width))
-	var left float64 = centerx - width/2
-	var top float64 = centery + height/2
-	var right float64 = left + width
-	var bottom float64 = top - height
-
-	hscale := (right - left) / float64(pixel_width)
-	vscale := (top - bottom) / float64(pixel_height)
-	hintercept := left
-	vintercept := bottom
-
-	size := image.Rect(0, 0, pixel_width, pixel_height)
-	rendering := image.NewRGBA(size)
-	row_renderer := SerialRowRenderer{}
-
-	for py := 0; py < pixel_height; py++ {
-		y := float64(py)*vscale + vintercept
-		row_renderer.render_row(hintercept, hscale, y, py, settings, rendering)
-	}
-
-	return rendering
-}
-
 func main() {
 	before := time.Now()
 
@@ -174,7 +176,6 @@ func main() {
 		abs_bound:      10000.0,
 		max_iterations: 200}
 
-	// image := render_image(&s)
 	image := render_image_concurrent_rows(&s)
 
 	file, _ := os.Create("result.png")
