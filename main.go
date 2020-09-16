@@ -19,6 +19,7 @@ type settings struct {
 	width          float64
 	abs_bound      float64
 	max_iterations uint32
+	filename       string
 }
 
 func compute_iterations(x, y float64, settings *settings) uint32 {
@@ -165,6 +166,31 @@ func (r ConcurrentImageRenderer) render_image(settings *settings, row_renderer R
 	return rendering
 }
 
+type AnimationRenderer interface {
+	render(settings_receiver <-chan *settings)
+}
+
+type SerialAnimationRenderer struct{}
+
+func (_ SerialAnimationRenderer) render(settings_receiver <-chan *settings) {
+	var waitgroup sync.WaitGroup
+	row_renderer := SerialRowRenderer{}
+	frame_renderer := ConcurrentImageRenderer{waitgroup: &waitgroup}
+	settings := <-settings_receiver
+
+	for settings != nil {
+		log.Printf("Rendering %s", settings.filename)
+		frame := frame_renderer.render_image(settings, row_renderer)
+		file, _ := os.Create(settings.filename)
+		png.Encode(file, frame)
+		file.Close()
+
+		settings = <-settings_receiver
+	}
+
+	waitgroup.Wait()
+}
+
 func main() {
 	before := time.Now()
 
@@ -175,18 +201,14 @@ func main() {
 		center_y:       0.1102,
 		width:          0.005,
 		abs_bound:      10000.0,
-		max_iterations: 200}
+		max_iterations: 200,
+		filename:       "result.png"}
 
-	var waitgroup sync.WaitGroup
-	row_renderer := SerialRowRenderer{}
-	// row_renderer := ConcurrentRowRenderer{waitgroup: &waitgroup}
-	image_renderer := ConcurrentImageRenderer{waitgroup: &waitgroup}
-	// image_renderer := SerialImageRenderer{}
-	image := image_renderer.render_image(&s, row_renderer)
-
-	file, _ := os.Create("result.png")
-	defer file.Close()
-	png.Encode(file, image)
+	renderer := SerialAnimationRenderer{}
+	settings_channel := make(chan *settings)
+	go renderer.render(settings_channel)
+	settings_channel <- &s
+	settings_channel <- nil
 
 	elapsed := time.Since(before)
 	log.Printf("Done in %s", elapsed)
