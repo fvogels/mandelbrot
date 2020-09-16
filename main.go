@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
@@ -175,12 +176,12 @@ type AnimationRenderer interface {
 	render(settings_receiver <-chan *settings)
 }
 
-type SerialAnimationRenderer struct{}
+type SerialAnimationRenderer struct {
+	frame_renderer ImageRenderer
+}
 
-func (_ SerialAnimationRenderer) render(settings_receiver <-chan *settings) {
-	var waitgroup sync.WaitGroup
-	row_renderer := SerialRowRenderer{}
-	frame_renderer := ConcurrentImageRenderer{waitgroup: &waitgroup, row_renderer: row_renderer}
+func (r SerialAnimationRenderer) render(settings_receiver <-chan *settings) {
+	frame_renderer := r.frame_renderer
 	settings := <-settings_receiver
 
 	for settings != nil {
@@ -192,27 +193,42 @@ func (_ SerialAnimationRenderer) render(settings_receiver <-chan *settings) {
 
 		settings = <-settings_receiver
 	}
-
-	waitgroup.Wait()
 }
 
 func main() {
 	before := time.Now()
 
-	s := settings{
-		image_width:    3440,
-		image_height:   1440,
-		center_x:       -0.7463,
-		center_y:       0.1102,
-		width:          0.005,
-		abs_bound:      10000.0,
-		max_iterations: 200,
-		filename:       "result.png"}
+	var waitgroup sync.WaitGroup
 
-	renderer := SerialAnimationRenderer{}
+	row_renderer := SerialRowRenderer{}
+	frame_renderer := ConcurrentImageRenderer{
+		waitgroup:    &waitgroup,
+		row_renderer: row_renderer}
+	renderer := SerialAnimationRenderer{frame_renderer: frame_renderer}
 	settings_channel := make(chan *settings)
 	go renderer.render(settings_channel)
-	settings_channel <- &s
+
+	start_width := 1.0
+	end_width := 0.005
+	nframes := 30
+
+	for i := 0; i < nframes; i += 1 {
+		filename := fmt.Sprintf("frame%05d.png", i)
+		width := start_width + float64(i)*(end_width-start_width)/float64(nframes)
+
+		s := settings{
+			image_width:    500,
+			image_height:   500,
+			center_x:       -0.7463,
+			center_y:       0.1102,
+			width:          width,
+			abs_bound:      10000.0,
+			max_iterations: 200,
+			filename:       filename}
+
+		settings_channel <- &s
+	}
+
 	settings_channel <- nil
 
 	elapsed := time.Since(before)
