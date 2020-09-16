@@ -123,7 +123,11 @@ func (_ SerialImageRenderer) render_image(settings *settings) image.Image {
 	return rendering
 }
 
-func render_image_concurrent_rows(settings *settings) image.Image {
+type ConcurrentImageRenderer struct {
+	waitgroup *sync.WaitGroup
+}
+
+func (r ConcurrentImageRenderer) render_image(settings *settings) image.Image {
 	pixel_width := settings.image_width
 	pixel_height := settings.image_height
 	centerx := settings.center_x
@@ -144,7 +148,7 @@ func render_image_concurrent_rows(settings *settings) image.Image {
 	size := image.Rect(0, 0, pixel_width, pixel_height)
 	rendering := image.NewRGBA(size)
 
-	var waitgroup sync.WaitGroup
+	waitgroup := r.waitgroup
 	row_renderer := SerialRowRenderer{}
 	// row_renderer := ConcurrentRowRenderer{waitgroup: &waitgroup}
 
@@ -176,7 +180,9 @@ func main() {
 		abs_bound:      10000.0,
 		max_iterations: 200}
 
-	image := render_image_concurrent_rows(&s)
+	var waitgroup sync.WaitGroup
+	renderer := ConcurrentImageRenderer{waitgroup: &waitgroup}
+	image := renderer.render_image(&s)
 
 	file, _ := os.Create("result.png")
 	defer file.Close()
